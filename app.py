@@ -2,6 +2,7 @@ import os
 import re
 import hmac
 from datetime import datetime
+from html import escape
 from urllib.parse import quote
 
 import pandas as pd
@@ -24,35 +25,73 @@ CUSTOM_CSS = """
     .stNumberInput input, .stSelectbox, .stMultiSelect, .stRadio, .stAlert,
     .stExpander, .stTabs, h1, h2, h3, h4 {
         font-family: 'Tajawal', sans-serif !important;
-        direction: rtl;
-        text-align: right;
+        direction: rtl; text-align: right;
     }
-    .stApp { background-color: #f8fafc; }
+    .stApp { background: #f1f2f4; }
+    .block-container { padding-top: 2.2rem; max-width: 1280px; }
+    section[data-testid="stSidebar"] { background: #ffffff !important; border-left: 1px solid #e7e9ee; }
 
-    .header-box {
-        background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
-        padding: 24px; border-radius: 16px; color: white; margin-bottom: 25px;
-        box-shadow: 0 10px 15px -3px rgba(0,0,0,.1); border-right: 6px solid #10b981;
-    }
-    .header-title { font-size: 28px; font-weight: 800; margin: 0; color: #fff; }
-    .header-subtitle { font-size: 15px; color: #94a3b8; margin-top: 5px; }
+    .page-title { font-size: 44px; font-weight: 800; color: #0f172a; margin: 0 0 4px 0; line-height: 1.15; }
+    .page-sub { font-size: 15px; color: #8a94a6; margin-bottom: 22px; }
 
-    .metric-card {
-        background: #fff; border-radius: 14px; padding: 20px; text-align: center;
-        box-shadow: 0 4px 6px -1px rgba(0,0,0,.05); border: 1px solid #e2e8f0;
-        transition: transform .2s ease, box-shadow .2s ease;
+    .dz-card, .insight { box-sizing: border-box; }
+    .dz-card {
+        background: #fff; border-radius: 26px; padding: 22px 24px; height: 100%;
+        border: 1px solid #eceef2;
+        box-shadow: 0 1px 0 rgba(255,255,255,.9) inset, 0 14px 32px -16px rgba(15,23,42,.18);
     }
-    .metric-card:hover { transform: translateY(-3px); box-shadow: 0 10px 15px -3px rgba(0,0,0,.1); }
-    .metric-title { font-size: 14px; color: #64748b; font-weight: 600; margin-bottom: 8px; }
-    .metric-value { font-size: 26px; font-weight: 800; color: #0f172a; }
+    .dz-title { font-size: 20px; font-weight: 700; color: #0f172a; margin-bottom: 14px;
+                display: flex; justify-content: space-between; align-items: center; }
+    .dz-sub { color: #8a94a6; font-size: 13px; font-weight: 500; }
+    .dz-big { font-size: 46px; font-weight: 800; line-height: 1.1; color: #0f172a; }
+    .dz-delta { display: inline-block; font-size: 13px; font-weight: 700; padding: 3px 10px;
+                border-radius: 99px; background: #dcfce7; color: #15803d; margin-right: 8px; }
+    .dz-delta.neg { background: #fee2e2; color: #b91c1c; }
+    .dz-gap { height: 16px; }
+
+    .fun-row { display: flex; gap: 10px; align-items: flex-end; direction: rtl; }
+    .fun-col { flex: 1; text-align: right; }
+    .fun-label { font-size: 12px; color: #9aa3b2; font-weight: 500; }
+    .fun-val { font-size: 26px; font-weight: 800; color: #b9c0cd; }
+    .fun-col.hi .fun-val { color: #0f172a; }
+    .fun-track { height: 160px; display: flex; align-items: flex-end; margin-top: 8px; }
+    .fun-bar { width: 100%; border-radius: 12px 12px 0 0;
+               background: repeating-linear-gradient(135deg, #2f5bea 0 5px, #dbe6ff 5px 8px); }
+    .fun-bar.solid { background: linear-gradient(180deg, #5b86ff, #1d3fd8);
+                     box-shadow: 0 10px 26px -8px rgba(37,99,235,.6); }
+
+    .sr { margin-bottom: 16px; }
+    .sr-top { display: flex; justify-content: space-between; font-size: 14px; margin-bottom: 7px; color: #0f172a; }
+    .sr-top b { font-weight: 800; }
+    .sr-track { height: 11px; border-radius: 99px; background: #eef0f4; overflow: hidden; }
+    .sr-fill { height: 100%; border-radius: 99px; }
+
+    .dot-row { display: flex; gap: 8px; align-items: flex-end; height: 100px; direction: rtl; margin: 14px 0 6px; }
+    .dot-col { display: flex; flex-direction: column-reverse; gap: 4px; align-items: center; flex: 1; }
+    .dot { width: 10px; height: 10px; border-radius: 50%; background: #bfe3c8; }
+    .dot.on { background: #16a34a; }
+    .dot-labs { display: flex; gap: 8px; direction: rtl; }
+    .dot-labs span { flex: 1; text-align: center; font-size: 10px; color: #9aa3b2; }
+    .peak { display: inline-block; font-size: 12px; background: #fff; border: 1px solid #e7e9ee; border-radius: 99px;
+            padding: 3px 12px; box-shadow: 0 6px 16px -8px rgba(15,23,42,.25); color: #334155; }
+
+    .insight { border-radius: 26px; padding: 26px; height: 100%; color: #fff;
+               background: linear-gradient(135deg, #f19a6b 0%, #4a78e0 52%, #10285f 100%);
+               box-shadow: 0 18px 40px -18px rgba(16,40,95,.6); }
+    .insight .pill { display: inline-block; background: rgba(255,255,255,.22); border-radius: 99px;
+                     padding: 3px 14px; font-size: 12px; margin-bottom: 18px; }
+    .insight .pct { font-size: 60px; font-weight: 800; line-height: 1; }
+    .insight .txt { font-size: 16px; font-weight: 700; margin-top: 12px; }
+    .insight .sub { font-size: 13px; opacity: .85; margin-top: 6px; }
 
     .stButton>button {
-        width: 100%; background-color: #10b981 !important; color: white !important;
-        font-weight: 700 !important; border-radius: 10px !important; border: none !important;
-        padding: 10px 20px !important; transition: all .3s ease !important;
+        width: 100%; background: #111827 !important; color: #fff !important; font-weight: 700 !important;
+        border-radius: 999px !important; border: none !important; padding: 10px 22px !important;
+        box-shadow: 0 10px 20px -10px rgba(17,24,39,.6); transition: all .2s ease !important;
     }
-    .stButton>button:hover { background-color: #059669 !important; transform: translateY(-1px); }
-    section[data-testid="stSidebar"] { background-color: #fff !important; border-left: 1px solid #e2e8f0; }
+    .stButton>button:hover { background: #2563eb !important; transform: translateY(-1px); }
+    .stDataFrame { border-radius: 18px; overflow: hidden; border: 1px solid #e7e9ee; }
+    div[data-testid="stExpander"] { background: #fff; border-radius: 22px; border: 1px solid #eceef2; }
 </style>
 """
 st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
@@ -256,12 +295,63 @@ def clean_phone(raw: str) -> str:
     return re.sub(r"[\s\-\.]", "", raw or "")
 
 
+# ==== UI helpers ====
+def h(html_str: str) -> str:
+    """يجعل HTML في سطر واحد حتى لا يفسّره Markdown ككود."""
+    return "".join(line.strip() for line in html_str.splitlines())
+
+
 def metric_card(title: str, value: str, color: str = "#0f172a", bg: str = "#ffffff") -> str:
-    return f"""
-        <div class="metric-card" style="background:{bg};">
-            <div class="metric-title">{title}</div>
-            <div class="metric-value" style="color:{color};">{value}</div>
-        </div>"""
+    return h(f"""
+        <div class="dz-card" style="background:{bg};">
+            <div class="dz-sub">{escape(title)}</div>
+            <div class="dz-big" style="color:{color}; font-size:34px; margin-top:6px;" dir="ltr">{escape(value)}</div>
+        </div>""")
+
+
+def funnel_card(title: str, steps) -> str:
+    """steps: [(label, value, highlighted)] - أعمدة مخطّطة تنازلية."""
+    mx = max([v for _, v, _ in steps] + [1])
+    cols = ""
+    for label, v, hi in steps:
+        height = max(8, int(v / mx * 150)) if v else 8
+        cols += (f'<div class="fun-col {"hi" if hi else ""}"><div class="fun-label">{escape(label)}</div>'
+                 f'<div class="fun-val">{v:,}</div><div class="fun-track">'
+                 f'<div class="fun-bar {"solid" if hi else ""}" style="height:{height}px"></div></div></div>')
+    return h(f'<div class="dz-card"><div class="dz-title">{escape(title)}</div><div class="fun-row">{cols}</div></div>')
+
+
+def stripe_row(label: str, value_text: str, value: float, total: float, color: str) -> str:
+    pct = min(100, int(value / total * 100)) if total else 0
+    fill = f"repeating-linear-gradient(135deg,{color} 0 4px,{color}99 4px 8px)"
+    return (f'<div class="sr"><div class="sr-top"><span>{escape(label)}</span><b dir="ltr">{escape(value_text)}</b></div>'
+            f'<div class="sr-track"><div class="sr-fill" style="width:{pct}%;background:{fill}"></div></div></div>')
+
+
+def dot_card(title: str, values, labels, peak_text: str, big: str, delta_text: str, delta_up: bool) -> str:
+    mx = max(list(values) + [0])
+    peak = list(values).index(mx) if mx else -1
+    cols = ""
+    for i, v in enumerate(values):
+        n = round(v / mx * 8) if mx and v else 0
+        dots = "".join(f'<span class="dot {"on" if i == peak else ""}"></span>' for _ in range(n))
+        cols += f'<div class="dot-col">{dots}</div>'
+    labs = "".join(f"<span>{escape(l)}</span>" for l in labels)
+    delta = f'<span class="dz-delta {"" if delta_up else "neg"}">{escape(delta_text)}</span>'
+    return h(f'<div class="dz-card"><div class="dz-title">{escape(title)}</div>'
+             f'<div><span class="dz-big">{escape(big)}</span>{delta}</div>'
+             f'<div class="dot-row">{cols}</div><div class="dot-labs">{labs}</div>'
+             f'<div style="margin-top:10px"><span class="peak">{escape(peak_text)}</span></div></div>')
+
+
+def insight_card(pct_text: str, headline: str, sub: str) -> str:
+    return h(f'<div class="insight"><span class="pill">💡 رؤى</span><div class="pct">{escape(pct_text)}</div>'
+             f'<div class="txt">{escape(headline)}</div><div class="sub">{escape(sub)}</div></div>')
+
+
+def gap() -> None:
+    st.markdown('<div class="dz-gap"></div>', unsafe_allow_html=True)
+# ==== end UI helpers ====
 
 
 def flash(msg: str) -> None:
@@ -269,12 +359,10 @@ def flash(msg: str) -> None:
 
 
 # ==================== 5. الهيدر والتنقل ====================
-st.markdown("""
-    <div class="header-box">
-        <div class="header-title">🇩🇿 منصة ذكاء الأعمال للتجار الجزائريين</div>
-        <div class="header-subtitle">لوحة تحكم كاملة لإدارة المبيعات، المخزون، وتحليل السوق الجزائري</div>
-    </div>
-""", unsafe_allow_html=True)
+st.markdown(h("""
+    <div class="page-title">منصة التاجر الجزائري</div>
+    <div class="page-sub">لوحة تحكم لإدارة المبيعات والمخزون وتحليل أداء متجرك</div>
+"""), unsafe_allow_html=True)
 
 if "flash" in st.session_state:
     st.toast(st.session_state.pop("flash"), icon="✅")
@@ -447,8 +535,11 @@ def page_sales():
 
 
 # --- التحليلات ---
+WEEKDAYS_AR = ["الإثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت", "الأحد"]
+
+
 def page_analytics():
-    st.subheader("📊 لوحة الأداء والرسوم البيانية")
+    st.markdown('<div class="page-title" style="font-size:34px">نظرة عامة</div>', unsafe_allow_html=True)
     orders = load_orders()
     if orders.empty:
         st.warning("لا توجد بيانات مبيعات لعرض التحليلات. أضف مبيعات أولاً.")
@@ -456,42 +547,80 @@ def page_analytics():
 
     done = orders[orders["حالة التوصيل"] == ST_DONE]
     returned = orders[orders["حالة التوصيل"] == ST_RETURNED]
-    total = len(orders)
-    closed = len(done) + len(returned)  # الطلبيات المحسومة فقط
+    pending = orders[orders["حالة التوصيل"] == ST_PENDING]
+    total, closed = len(orders), len(done) + len(returned)
     success_rate = (len(done) / closed * 100) if closed else 0.0
     revenue = int(done["المبلغ"].sum())
-    # الربح الفعلي: المسلَّم = بيع - شراء - شحن ، والراجع = خسارة الشحن (قبل الإعلانات)
-    profit = int((done["المبلغ"] - done["تكلفة الشراء"] - done["الشحن"]).sum() - returned["الشحن"].sum())
+    pending_value = int(pending["المبلغ"].sum())
+    lost_ship = int(returned["الشحن"].sum())
+    profit = int((done["المبلغ"] - done["تكلفة الشراء"] - done["الشحن"]).sum() - lost_ship)
 
-    m1, m2, m3, m4 = st.columns(4)
-    with m1:
-        st.markdown(metric_card("إجمالي الطلبيات", str(total)), unsafe_allow_html=True)
-    with m2:
-        st.markdown(metric_card("نسبة التوصيل الناجحة", f"{success_rate:.1f}%", "#10b981"), unsafe_allow_html=True)
-    with m3:
-        st.markdown(metric_card("المداخيل المحصلة", f"{revenue:,} DA", "#2563eb"), unsafe_allow_html=True)
-    with m4:
+    dates = pd.to_datetime(orders["التاريخ"], errors="coerce")
+    now = pd.Timestamp.now(tz="Africa/Algiers").tz_localize(None)
+    last7 = int((dates >= now - pd.Timedelta(days=7)).sum())
+    prev7 = int(((dates >= now - pd.Timedelta(days=14)) & (dates < now - pd.Timedelta(days=7))).sum())
+    diff = last7 - prev7
+
+    # --- الصف الأول: القمع + الإيرادات ---
+    c1, c2 = st.columns([3, 2])
+    with c1:
+        st.markdown(funnel_card("مسار الطلبيات", [
+            ("الطلبيات المسجلة", total, False),
+            ("قيد التوصيل", len(pending), False),
+            ("الراجعة", len(returned), False),
+            ("المسلَّمة بنجاح", len(done), True),
+        ]), unsafe_allow_html=True)
+    with c2:
+        rows = (stripe_row("محصَّل (مسلَّم)", f"{revenue:,} DA", revenue, max(revenue + pending_value, 1), "#16a34a")
+                + stripe_row("قيد التوصيل (متوقع)", f"{pending_value:,} DA", pending_value, max(revenue + pending_value, 1), "#2563eb")
+                + stripe_row("خسارة شحن الراجع", f"{lost_ship:,} DA", lost_ship, max(revenue + pending_value, 1), "#ec4899"))
+        st.markdown(h(f'<div class="dz-card"><div class="dz-title">المداخيل</div>'
+                      f'<div class="dz-big" style="margin-bottom:18px">{revenue:,} <span class="dz-sub">DA</span></div>{rows}</div>'),
+                    unsafe_allow_html=True)
+    gap()
+
+    # --- الصف الثاني: الأيام + الولايات + الرؤى ---
+    by_day = dates.dt.dayofweek.value_counts().reindex(range(7), fill_value=0).tolist()
+    peak_day = WEEKDAYS_AR[by_day.index(max(by_day))] if max(by_day) else "-"
+    top_w = orders["الولاية"].value_counts().head(4)
+    wil_rows = "".join(stripe_row(w, f"{n} طلبية", n, int(top_w.max()), "#2563eb") for w, n in top_w.items())
+
+    if closed == 0:
+        headline, sub = "لا توجد طلبيات محسومة بعد", "حدّث حالة الطلبيات لتظهر نسبة التوصيل."
+    else:
+        headline = ("نسبة توصيل ممتازة" if success_rate >= 75 else "نسبة توصيل متوسطة" if success_rate >= 55
+                    else "نسبة التوصيل منخفضة، راجع الولايات والمنتجات")
+        if len(returned):
+            worst = returned["الولاية"].value_counts().index[0]
+            sub = f"أكثر ولاية رتوراً: {worst} ({int(returned['الولاية'].value_counts().iloc[0])})"
+        else:
+            sub = "لا توجد طلبيات راجعة حتى الآن."
+
+    d1, d2, d3 = st.columns(3)
+    with d1:
+        st.markdown(dot_card("الطلبيات حسب اليوم", by_day, ["إثن", "ثلا", "أرب", "خمي", "جمع", "سبت", "أحد"],
+                             f"الذروة: {peak_day}", f"{total}",
+                             f"{diff:+d} عن الأسبوع الماضي", diff >= 0), unsafe_allow_html=True)
+    with d2:
+        st.markdown(h(f'<div class="dz-card"><div class="dz-title">أكثر الولايات طلباً</div>{wil_rows}</div>'),
+                    unsafe_allow_html=True)
+    with d3:
+        st.markdown(insight_card(f"{success_rate:.0f}%", headline, sub), unsafe_allow_html=True)
+    gap()
+
+    # --- الصف الثالث: الربح + المنتجات ---
+    e1, e2 = st.columns([1, 2])
+    with e1:
         st.markdown(metric_card("الربح الفعلي (قبل الإعلانات)", f"{profit:,} DA",
                                 "#16a34a" if profit >= 0 else "#dc2626"), unsafe_allow_html=True)
-    st.caption("نسبة التوصيل تحسب على الطلبيات المحسومة فقط (مسلَّمة أو راجعة)، دون الطلبيات قيد التوصيل.")
-
-    st.markdown("<br>", unsafe_allow_html=True)
-    c1, c2 = st.columns(2)
-    with c1:
-        st.subheader("🗺️ أكثر الولايات شراءً")
-        st.bar_chart(orders["الولاية"].value_counts())
-    with c2:
-        st.subheader("🚚 توزيع حالات التوصيل")
-        st.bar_chart(orders["حالة التوصيل"].value_counts())
-
-    st.subheader("🏆 أفضل المنتجات (المسلَّمة)")
-    if done.empty:
-        st.info("لا توجد طلبيات مسلَّمة بعد.")
-    else:
-        top = done.groupby("المنتج").agg(
-            الطلبيات=("رقم", "count"), المداخيل=("المبلغ", "sum")
-        ).sort_values("المداخيل", ascending=False)
-        st.dataframe(top, use_container_width=True)
+    with e2:
+        if done.empty:
+            st.info("لا توجد طلبيات مسلَّمة بعد لعرض أفضل المنتجات.")
+        else:
+            top = done.groupby("المنتج").agg(
+                الطلبيات=("رقم", "count"), المداخيل=("المبلغ", "sum")
+            ).sort_values("المداخيل", ascending=False)
+            st.dataframe(top, use_container_width=True)
 
 
 # --- حاسبة الأرباح ---
