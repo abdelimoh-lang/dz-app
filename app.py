@@ -56,9 +56,9 @@ CUSTOM_CSS = """
     .fun-col.hi .fun-val { color: #0f172a; }
     .fun-track { height: 160px; display: flex; align-items: flex-end; margin-top: 8px; }
     .fun-bar { width: 100%; border-radius: 12px 12px 0 0;
-               background: repeating-linear-gradient(135deg, #2f5bea 0 5px, #dbe6ff 5px 8px); }
-    .fun-bar.solid { background: linear-gradient(180deg, #5b86ff, #1d3fd8);
-                     box-shadow: 0 10px 26px -8px rgba(37,99,235,.6); }
+               background: repeating-linear-gradient(135deg, #0f8a5f 0 5px, #d6f3e6 5px 8px); }
+    .fun-bar.solid { background: linear-gradient(180deg, #34d399, #047857);
+                     box-shadow: 0 10px 26px -8px rgba(4,120,87,.55); }
 
     .sr { margin-bottom: 16px; }
     .sr-top { display: flex; justify-content: space-between; font-size: 14px; margin-bottom: 7px; color: #0f172a; }
@@ -76,8 +76,8 @@ CUSTOM_CSS = """
             padding: 3px 12px; box-shadow: 0 6px 16px -8px rgba(15,23,42,.25); color: #334155; }
 
     .insight { border-radius: 26px; padding: 26px; height: 100%; color: #fff;
-               background: linear-gradient(135deg, #f19a6b 0%, #4a78e0 52%, #10285f 100%);
-               box-shadow: 0 18px 40px -18px rgba(16,40,95,.6); }
+               background: linear-gradient(135deg, #f6c453 0%, #1fa971 52%, #053b2a 100%);
+               box-shadow: 0 18px 40px -18px rgba(5,59,42,.6); }
     .insight .pill { display: inline-block; background: rgba(255,255,255,.22); border-radius: 99px;
                      padding: 3px 14px; font-size: 12px; margin-bottom: 18px; }
     .insight .pct { font-size: 60px; font-weight: 800; line-height: 1; }
@@ -85,11 +85,20 @@ CUSTOM_CSS = """
     .insight .sub { font-size: 13px; opacity: .85; margin-top: 6px; }
 
     .stButton>button {
-        width: 100%; background: #111827 !important; color: #fff !important; font-weight: 700 !important;
+        width: 100%; background: #0b1f17 !important; color: #fff !important; font-weight: 700 !important;
         border-radius: 999px !important; border: none !important; padding: 10px 22px !important;
         box-shadow: 0 10px 20px -10px rgba(17,24,39,.6); transition: all .2s ease !important;
     }
-    .stButton>button:hover { background: #2563eb !important; transform: translateY(-1px); }
+    .stButton>button:hover { background: #0f8a5f !important; transform: translateY(-1px); }
+    .fun-bar.neg { background: repeating-linear-gradient(135deg, #e11d48 0 5px, #fde2e8 5px 8px); }
+    .fun-col.negv .fun-val { color: #e11d48; }
+    .brand { display: flex; align-items: center; gap: 14px; margin-bottom: 22px; }
+    .logo { width: 56px; height: 56px; border-radius: 18px; color: #fff; font-size: 32px; font-weight: 800;
+            display: flex; align-items: center; justify-content: center;
+            background: linear-gradient(135deg, #34d399, #047857);
+            box-shadow: 0 12px 24px -10px rgba(4,120,87,.7); }
+    .brand-name { font-size: 30px; font-weight: 800; color: #0b1f17; line-height: 1.1; }
+    .brand-sub { font-size: 14px; color: #8a94a6; margin-top: 2px; }
     .stDataFrame { border-radius: 18px; overflow: hidden; border: 1px solid #e7e9ee; }
     div[data-testid="stExpander"] { background: #fff; border-radius: 22px; border: 1px solid #eceef2; }
 </style>
@@ -349,6 +358,31 @@ def insight_card(pct_text: str, headline: str, sub: str) -> str:
              f'<div class="txt">{escape(headline)}</div><div class="sub">{escape(sub)}</div></div>')
 
 
+def page_head(title: str, sub: str = "") -> None:
+    st.markdown(h(f'<div class="page-title" style="font-size:32px">{escape(title)}</div>'
+                  f'<div class="page-sub">{escape(sub)}</div>'), unsafe_allow_html=True)
+
+
+def section_title(text: str) -> None:
+    st.markdown(h(f'<div class="dz-title" style="margin:22px 0 10px">{escape(text)}</div>'),
+                unsafe_allow_html=True)
+
+
+def bars_card(title: str, items, note: str = "") -> str:
+    """items: [(label, value, highlighted)] - القيم السالبة بلون أحمر."""
+    mx = max([abs(v) for _, v, _ in items] + [1])
+    cols = ""
+    for label, v, hi in items:
+        height = max(8, int(abs(v) / mx * 150)) if v else 8
+        bar = "neg" if v < 0 else ("solid" if hi else "")
+        cols += (f'<div class="fun-col {"hi" if hi else ""} {"negv" if v < 0 else ""}">'
+                 f'<div class="fun-label">{escape(label)}</div><div class="fun-val" dir="ltr">{v:,}</div>'
+                 f'<div class="fun-track"><div class="fun-bar {bar}" style="height:{height}px"></div></div></div>')
+    foot = f'<div class="dz-sub" style="margin-top:12px">{escape(note)}</div>' if note else ""
+    return h(f'<div class="dz-card"><div class="dz-title">{escape(title)}</div>'
+             f'<div class="fun-row">{cols}</div>{foot}</div>')
+
+
 def gap() -> None:
     st.markdown('<div class="dz-gap"></div>', unsafe_allow_html=True)
 # ==== end UI helpers ====
@@ -360,8 +394,9 @@ def flash(msg: str) -> None:
 
 # ==================== 5. الهيدر والتنقل ====================
 st.markdown(h("""
-    <div class="page-title">منصة التاجر الجزائري</div>
-    <div class="page-sub">لوحة تحكم لإدارة المبيعات والمخزون وتحليل أداء متجرك</div>
+    <div class="brand"><div class="logo">ت</div>
+    <div><div class="brand-name">منصة التاجر</div>
+    <div class="brand-sub">إدارة المبيعات والمخزون وتحليل الأداء بذكاء</div></div></div>
 """), unsafe_allow_html=True)
 
 if "flash" in st.session_state:
@@ -388,7 +423,20 @@ if st.session_state.get("auth_ok"):
 
 # --- المخزون ---
 def page_inventory():
-    st.subheader("🏭 إدارة السلع والمخزون")
+    page_head("إدارة المخزون", "أضف منتجاتك وتابع الكميات وقيمة المخزون")
+    inv_all = load_inventory()
+    low_n = int((inv_all["الكمية المتوفرة"] <= 5).sum()) if not inv_all.empty else 0
+    stock_value = int((inv_all["الكمية المتوفرة"] * inv_all["سعر الشراء بالجملة (DA)"]).sum()) if not inv_all.empty else 0
+    k1, k2, k3, k4 = st.columns(4)
+    with k1:
+        st.markdown(metric_card("عدد المنتجات", str(len(inv_all))), unsafe_allow_html=True)
+    with k2:
+        st.markdown(metric_card("إجمالي القطع", f"{int(inv_all['الكمية المتوفرة'].sum()) if not inv_all.empty else 0:,}"), unsafe_allow_html=True)
+    with k3:
+        st.markdown(metric_card("قيمة المخزون", f"{stock_value:,} DA", "#0f8a5f"), unsafe_allow_html=True)
+    with k4:
+        st.markdown(metric_card("منتجات قاربت على النفاد", str(low_n), "#dc2626" if low_n else "#0f172a"), unsafe_allow_html=True)
+    gap()
 
     with st.expander("➕ إضافة منتج جديد إلى المخزون", expanded=True):
         c1, c2, c3, c4 = st.columns(4)
@@ -411,7 +459,7 @@ def page_inventory():
                 st.rerun()
 
     st.markdown("---")
-    st.subheader("📦 حالة المخزون الحالي")
+    section_title("حالة المخزون الحالي")
     inv = load_inventory()
     if inv.empty:
         st.info("المخزون فارغ حالياً. أضف منتجاتك الأولى من النموذج أعلاه.")
@@ -430,7 +478,21 @@ def page_inventory():
 
 # --- المبيعات ---
 def page_sales():
-    st.subheader("📦 تسجيل وتتبع الطلبيات")
+    page_head("تتبع المبيعات", "سجّل الطلبيات وحدّث حالتها وتابع الولايات")
+    _o = load_orders()
+    _today = datetime.now().strftime("%Y-%m-%d")
+    _closed = int(_o["حالة التوصيل"].isin([ST_DONE, ST_RETURNED]).sum())
+    _rate = (int((_o["حالة التوصيل"] == ST_DONE).sum()) / _closed * 100) if _closed else 0.0
+    s1, s2, s3, s4 = st.columns(4)
+    with s1:
+        st.markdown(metric_card("طلبيات اليوم", str(int(_o["التاريخ"].astype(str).str.startswith(_today).sum()))), unsafe_allow_html=True)
+    with s2:
+        st.markdown(metric_card("قيد التوصيل", str(int((_o["حالة التوصيل"] == ST_PENDING).sum())), "#f59e0b"), unsafe_allow_html=True)
+    with s3:
+        st.markdown(metric_card("نسبة التوصيل", f"{_rate:.0f}%", "#0f8a5f"), unsafe_allow_html=True)
+    with s4:
+        st.markdown(metric_card("إجمالي الطلبيات", str(len(_o))), unsafe_allow_html=True)
+    gap()
     inv = load_inventory()
 
     with st.expander("➕ إضافة طلبية جديدة", expanded=True):
@@ -484,7 +546,7 @@ def page_sales():
         return
 
     # ---- تحديث حالة طلبية ----
-    st.subheader("🔄 تحديث حالة طلبية")
+    section_title("تحديث حالة طلبية")
     labels = {
         int(r["رقم"]): f"#{r['رقم']} - {r['الزبون']} - {r['المنتج']} - {r['حالة التوصيل']}"
         for _, r in orders.sort_values("رقم", ascending=False).iterrows()
@@ -512,7 +574,7 @@ def page_sales():
 
     # ---- السجل والبحث ----
     st.markdown("---")
-    st.subheader("📋 سجل الطلبيات والبحث المتقدم")
+    section_title("سجل الطلبيات")
     f1, f2 = st.columns(2)
     with f1:
         status_filter = st.multiselect("تصفية حسب الحالة:", STATUSES, default=STATUSES)
@@ -572,7 +634,7 @@ def page_analytics():
         ]), unsafe_allow_html=True)
     with c2:
         rows = (stripe_row("محصَّل (مسلَّم)", f"{revenue:,} DA", revenue, max(revenue + pending_value, 1), "#16a34a")
-                + stripe_row("قيد التوصيل (متوقع)", f"{pending_value:,} DA", pending_value, max(revenue + pending_value, 1), "#2563eb")
+                + stripe_row("قيد التوصيل (متوقع)", f"{pending_value:,} DA", pending_value, max(revenue + pending_value, 1), "#f59e0b")
                 + stripe_row("خسارة شحن الراجع", f"{lost_ship:,} DA", lost_ship, max(revenue + pending_value, 1), "#ec4899"))
         st.markdown(h(f'<div class="dz-card"><div class="dz-title">المداخيل</div>'
                       f'<div class="dz-big" style="margin-bottom:18px">{revenue:,} <span class="dz-sub">DA</span></div>{rows}</div>'),
@@ -583,7 +645,7 @@ def page_analytics():
     by_day = dates.dt.dayofweek.value_counts().reindex(range(7), fill_value=0).tolist()
     peak_day = WEEKDAYS_AR[by_day.index(max(by_day))] if max(by_day) else "-"
     top_w = orders["الولاية"].value_counts().head(4)
-    wil_rows = "".join(stripe_row(w, f"{n} طلبية", n, int(top_w.max()), "#2563eb") for w, n in top_w.items())
+    wil_rows = "".join(stripe_row(w, f"{n} طلبية", n, int(top_w.max()), "#0f8a5f") for w, n in top_w.items())
 
     if closed == 0:
         headline, sub = "لا توجد طلبيات محسومة بعد", "حدّث حالة الطلبيات لتظهر نسبة التوصيل."
@@ -608,6 +670,24 @@ def page_analytics():
         st.markdown(insight_card(f"{success_rate:.0f}%", headline, sub), unsafe_allow_html=True)
     gap()
 
+    # --- الأرباح الشهرية (آخر 6 أشهر) ---
+    months_dz = ["جانفي", "فيفري", "مارس", "أفريل", "ماي", "جوان", "جويلية", "أوت", "سبتمبر", "أكتوبر", "نوفمبر", "ديسمبر"]
+    periods = pd.period_range(end=now.to_period("M"), periods=6, freq="M")
+    month_of = dates.dt.to_period("M")
+    is_done = orders["حالة التوصيل"] == ST_DONE
+    is_ret = orders["حالة التوصيل"] == ST_RETURNED
+    items = []
+    for i, per in enumerate(periods):
+        in_m = month_of == per
+        d = orders[in_m & is_done]
+        r = orders[in_m & is_ret]
+        val = int((d["المبلغ"] - d["تكلفة الشراء"] - d["الشحن"]).sum() - r["الشحن"].sum())
+        items.append((months_dz[per.month - 1], val, i == len(periods) - 1))
+    st.markdown(bars_card("الأرباح الشهرية (آخر 6 أشهر)", items,
+                          "الربح = سعر البيع − الشراء − الشحن للمسلَّم، ناقص شحن الراجع (قبل الإعلانات)."),
+                unsafe_allow_html=True)
+    gap()
+
     # --- الصف الثالث: الربح + المنتجات ---
     e1, e2 = st.columns([1, 2])
     with e1:
@@ -625,7 +705,7 @@ def page_analytics():
 
 # --- حاسبة الأرباح ---
 def page_calculator():
-    st.subheader("💰 حاسبة الربح الصافي (بعد احتساب الرتور)")
+    page_head("حاسبة الأرباح", "احسب ربحك الصافي بعد الشحن والإعلانات والرتور")
     c1, c2 = st.columns(2)
     with c1:
         buy = st.number_input("سعر شراء السلعة (DA)", value=2000, min_value=0)
@@ -652,12 +732,19 @@ def page_calculator():
         st.markdown(metric_card("ربح الطلبية المسلَّمة", f"{int(margin):,} DA"), unsafe_allow_html=True)
     with k3:
         be_txt = f"{breakeven:.0f}%" if breakeven is not None and breakeven <= 100 else "غير ممكن"
-        st.markdown(metric_card("نسبة التوصيل لتغطية التكاليف", be_txt, "#2563eb"), unsafe_allow_html=True)
+        st.markdown(metric_card("نسبة التوصيل لتغطية التكاليف", be_txt, "#0f8a5f"), unsafe_allow_html=True)
+    gap()
+    net_delivered = sell - buy - ship - ads
+    parts = [("تكلفة الشراء", buy, "#64748b"), ("الشحن", ship, "#f59e0b"),
+             ("الإعلانات", ads, "#e11d48"), ("صافي ربح الطلبية المسلَّمة", max(net_delivered, 0), "#0f8a5f")]
+    rows = "".join(stripe_row(lbl, f"{int(v):,} DA", v, max(sell, 1), c) for lbl, v, c in parts)
+    st.markdown(h(f'<div class="dz-card"><div class="dz-title">أين يذهب سعر البيع؟ <span class="dz-sub" dir="ltr">{int(sell):,} DA</span></div>{rows}'
+                  f'<div class="dz-sub">لكل طلبية مسلَّمة، قبل احتساب خسارة الراجع.</div></div>'), unsafe_allow_html=True)
 
 
 # --- كاشف المنتجات ---
 def page_market():
-    st.subheader("🔎 كاشف السوق الجزائرية")
+    page_head("كاشف السوق", "قارن الأسعار وتابع الطلب على منتجك")
     q = st.text_input("أدخل اسم المنتج للبحث عن أسعار المنافسين:").strip()
     if q:
         e = quote(q)
@@ -677,7 +764,7 @@ def page_market():
 
 # --- مولّد الإعلانات ---
 def page_ads():
-    st.subheader("✍️ مولّد المحتوى الإعلاني")
+    page_head("مولّد الإعلانات", "نصوص جاهزة لمنتجاتك بالفصحى والدارجة")
     st.caption("يعتمد حالياً على قوالب جاهزة. يمكن ربطه بـ Claude API لاحقاً لتوليد نصوص حقيقية.")
     name = st.text_input("اسم المنتج:").strip()
     features = st.text_area("أهم المميزات (كل ميزة في سطر):")
